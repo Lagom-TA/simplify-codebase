@@ -455,9 +455,7 @@ export function compileArchitecture(document) {
     connections: document.relationships.map((relationship, index) => {
       const from = componentById.get(relationship.from);
       const to = componentById.get(relationship.to);
-      const skipsColumns = Math.abs(ranks.get(relationship.to) - ranks.get(relationship.from)) > 1;
-      const sameRow = from.pos[1] === to.pos[1];
-      const needsBypass = skipsColumns && sameRow;
+      const needsBypass = Math.abs(ranks.get(relationship.to) - ranks.get(relationship.from)) > 1;
       const corridorY = Math.max(from.pos[1] + from.size[1], to.pos[1] + to.size[1]) + 42 + (index % 2) * 22;
       return {
         id: relationship.id,
@@ -488,8 +486,8 @@ function enhanceArchifyHtml(html, document) {
   return html
     .replace('<html ', '<html data-cleanup-artifact="true" ')
     .replace('<meta name="generator"', '<meta name="cleanup-map-artifact" content="2">\n  <meta name="generator"')
-    .replace('</head>', `  <style id="cleanup-map-extension-styles">\n${css}\n  </style>\n</head>`)
-    .replace('</body>', `  ${semanticData}\n  <script id="cleanup-map-extension">\n${javascript}\n  </script>\n</body>`);
+    .replace('</head>', () => `  <style id="cleanup-map-extension-styles">\n${css}\n  </style>\n</head>`)
+    .replace('</body>', () => `  ${semanticData}\n  <script id="cleanup-map-extension">\n${javascript}\n  </script>\n</body>`);
 }
 
 export function renderDocument(document) {
@@ -514,10 +512,15 @@ export function renderDocument(document) {
 
 export function checkArtifact(html) {
   const normalizedHtml = html.toLowerCase();
+  const embedded = [...html.matchAll(/<script id="cleanup-map-data" type="application\/json">([\s\S]*?)<\/script>/g)];
+  let validData = false;
+  try {
+    validData = embedded.length === 1 && validateDocument(JSON.parse(embedded[0][1])).length === 0;
+  } catch (_) {}
   const checks = [
     ['artifact marker', html.includes('name="cleanup-map-artifact" content="2"')],
     ['vendored Archify runtime', html.includes('name="generator" content="archify') && html.includes('Archify.routeProbe = (function ()')],
-    ['embedded semantic data', html.includes('id="cleanup-map-data"')],
+    ['embedded semantic data', validData],
     ['single interactive SVG', (html.match(/<svg\b/g) || []).length === 1 && html.includes('data-node-id=')],
     ['cleanup stage workbench', html.includes("panel.id = 'cleanup-stage-panel'") && html.includes("stageControls.id = 'cleanup-stage-controls'")],
     ['semantic passport and route probe', html.includes('id="focus-chip"') && html.includes('id="route-probe"')],

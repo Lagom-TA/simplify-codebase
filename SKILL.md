@@ -79,11 +79,11 @@ If the user requests a simplification proposal, local cleanup annotation, or des
 
 If the user asks to combine findings from another branch, pull request, task, or agent run, read [integrating-findings.md](references/integrating-findings.md). Preserve evidence, not finding counts.
 
-When the user requests a visual report, or when several confirmed components and relationships make a candidate's locus materially clearer, read [visual-reporting.md](references/visual-reporting.md). Use the bundled cleanup-map renderer rather than requiring a general diagram Skill. Treat the map as an optional companion to the proof records, not as evidence by itself. Do not write Survey artifacts into the target repository unless the user requested repository files.
+Generate a visual companion only when the user explicitly requests one or confirms an offer. If confirmed relationships would make a candidate clearer, explain what the map would clarify and ask before generating it. Without confirmation, complete the text report without a map; do not wait on visual delivery to finish the audit. For authorized visual delivery, read [visual-reporting.md](references/visual-reporting.md) and use the bundled cleanup-map renderer. The map is an optional companion to the proof records, not evidence by itself. Do not write Survey artifacts into the target repository unless the user requested repository files.
 
 ## Deliver the result
 
-For a survey, report coverage, ranked proof records, rejected or unresolved high-value leads, and the next fact needed for each uncertainty. When a visual companion was requested or justified, report its status and cleanup-map Finding deep links separately.
+For a survey, report coverage, ranked proof records, rejected or unresolved high-value leads, and the next fact needed for each uncertainty. When a visual companion was requested or confirmed, report its status and cleanup-map Finding deep links separately.
 
 Keep the handoff scan-friendly. Lead with the result, then include only the
 proof records, decision-relevant uncertainty, visual links, and validation that

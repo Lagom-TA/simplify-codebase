@@ -11,7 +11,6 @@
   var relationshipById = new Map(data.relationships.map(function (relationship) { return [relationship.id, relationship]; }));
   var currentFinding = data.findings[0];
   var currentStage = data.meta.mode === 'change' ? 'before' : 'locate';
-  var cleanupInitialized = false;
   var cameraFrame = 0;
 
   var copy = isChinese ? {
@@ -223,6 +222,9 @@
     var edges = new Set(snapshot.relationships);
     semanticNodes().forEach(function (node) { if (!nodes.has(node.getAttribute('data-node-id'))) node.setAttribute('data-cleanup-absent', 'true'); });
     semanticEdges().forEach(function (edge) { if (!edges.has(edge.getAttribute('data-edge-id'))) edge.setAttribute('data-cleanup-absent', 'true'); });
+    window.Archify.focus.refreshGraph();
+    window.Archify.finder.refreshGraph();
+    window.Archify.radar.refreshGraph();
   }
 
   function routeFor(finding) {
@@ -338,28 +340,33 @@
     }
   }
 
-  function updateButtons() {
-    findingStrip.replaceChildren();
-    data.findings.forEach(function (finding) {
-      var button = element('button', 'cleanup-finding-button', finding.id);
-      button.type = 'button';
-      button.dataset.disposition = finding.disposition;
-      button.title = finding.title;
-      button.setAttribute('aria-label', finding.id + ' · ' + finding.title);
-      button.setAttribute('aria-pressed', String(finding.id === currentFinding.id));
-      button.addEventListener('click', function () { activate(finding.id, stageEntries[0][0], true); });
-      findingStrip.appendChild(button);
-    });
+  var findingButtons = data.findings.map(function (finding) {
+    var button = element('button', 'cleanup-finding-button', finding.id);
+    button.type = 'button';
+    button.dataset.disposition = finding.disposition;
+    button.title = finding.title;
+    button.setAttribute('aria-label', finding.id + ' · ' + finding.title);
+    button.addEventListener('click', function () { activate(finding.id, stageEntries[0][0], true); });
+    findingStrip.appendChild(button);
+    return button;
+  });
 
-    stageControls.replaceChildren();
-    stageEntries.forEach(function (entry, index) {
-      var button = element('button', 'cleanup-stage-button');
-      button.type = 'button';
-      button.appendChild(element('span', 'cleanup-stage-key', String(index + 1)));
-      button.appendChild(document.createTextNode(entry[1]));
-      button.setAttribute('aria-pressed', String(entry[0] === currentStage));
-      button.addEventListener('click', function () { activate(currentFinding.id, entry[0], true); });
-      stageControls.appendChild(button);
+  var stageButtons = stageEntries.map(function (entry, index) {
+    var button = element('button', 'cleanup-stage-button');
+    button.type = 'button';
+    button.appendChild(element('span', 'cleanup-stage-key', String(index + 1)));
+    button.appendChild(document.createTextNode(entry[1]));
+    button.addEventListener('click', function () { activate(currentFinding.id, entry[0], true); });
+    stageControls.appendChild(button);
+    return button;
+  });
+
+  function updateButtons() {
+    findingButtons.forEach(function (button, index) {
+      button.setAttribute('aria-pressed', String(data.findings[index].id === currentFinding.id));
+    });
+    stageButtons.forEach(function (button, index) {
+      button.setAttribute('aria-pressed', String(stageEntries[index][0] === currentStage));
     });
     stageCaption.textContent = stageCaptions[currentStage] || '';
   }
@@ -372,13 +379,16 @@
   }
 
   function activate(findingId, stage, writeHash, preserveNativeFocus) {
+    if (cameraFrame) window.cancelAnimationFrame(cameraFrame);
+    cameraFrame = 0;
     var finding = findingById.get(findingId) || data.findings[0];
     if (!stageEntries.some(function (entry) { return entry[0] === stage; })) stage = stageEntries[0][0];
     currentFinding = finding;
     currentStage = stage;
+    panel.dataset.finding = finding.id;
     panel.dataset.stage = stage;
     clearMarks();
-    if (!preserveNativeFocus) resetNative();
+    resetNative();
     var svg = document.querySelector('svg');
     if (svg) svg.setAttribute('data-cleanup-stage', stage);
 
@@ -402,9 +412,11 @@
     updateEvidence(finding, stage);
     updateButtons();
     setEvidenceOpen(isDecisionStage(stage));
-    if (!preserveNativeFocus) scheduleStageCamera(finding, stage);
+    if (preserveNativeFocus) {
+      window.Archify.focus.restoreFromHash();
+      window.Archify.routeProbe.restoreFromHash();
+    } else scheduleStageCamera(finding, stage);
     if (writeHash) updateHash();
-    cleanupInitialized = true;
     window.setTimeout(updatePassportLocus, 0);
   }
 
@@ -417,11 +429,12 @@
     if (!finding && findingView) finding = view.slice('finding-'.length).toUpperCase();
     var ownsHash = Boolean(finding || stage || findingView);
     if (!ownsHash) {
-      if (!cleanupInitialized) activate(currentFinding.id, currentStage, false, Boolean(location.hash.replace(/^#/, '').trim()));
+      if (!panel.dataset.finding) activate(currentFinding.id, currentStage, false, Boolean(location.hash.replace(/^#/, '').trim()));
       return;
     }
-    if (findingById.has(finding)) activate(finding, stage || (findingView ? (data.meta.mode === 'change' ? 'verify' : 'decide') : stageEntries[0][0]), false);
-    else activate(currentFinding.id, stage || currentStage, false);
+    var preserveNativeFocus = Boolean(params.get('focus') || params.get('relation') || params.get('route'));
+    if (findingById.has(finding)) activate(finding, stage || (findingView ? (data.meta.mode === 'change' ? 'verify' : 'decide') : stageEntries[0][0]), false, preserveNativeFocus);
+    else activate(currentFinding.id, stage || currentStage, false, preserveNativeFocus);
   }
 
   evidenceToggle.addEventListener('click', toggleEvidence);
@@ -441,6 +454,9 @@
     current: function () { return { finding: currentFinding.id, stage: currentStage, evidence: !evidenceDrawer.hidden }; },
   };
   restoreFromHash();
+  window.Archify.readerLayout.measure();
+  window.Archify.viewerChromeLayout.measure();
+  window.Archify.readerLayout.measure();
   window.requestAnimationFrame(function () {
     document.documentElement.setAttribute('data-cleanup-ready', 'true');
   });

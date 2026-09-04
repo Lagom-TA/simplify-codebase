@@ -2514,6 +2514,25 @@
     })();
     Archify.locale = archifyI18nData.locale || 'en';
 
+    function graphNodes(svg) {
+      return Array.from(svg.querySelectorAll('[data-node-id]:not([data-cleanup-absent])'));
+    }
+
+    function graphEdges(svg) {
+      return Array.from(svg.querySelectorAll('[data-edge-from][data-edge-to]:not([data-cleanup-absent])'));
+    }
+
+    function viewerHash(value) {
+      var params = new URLSearchParams(value);
+      var current = new URLSearchParams(location.hash.slice(1));
+      var panel = document.getElementById('cleanup-stage-panel');
+      ['finding', 'stage'].forEach(function (key) {
+        var context = panel ? panel.dataset[key] : current.get(key);
+        if (context) params.set(key, context);
+      });
+      return params.size ? '#' + params.toString() : '';
+    }
+
     function viewerText(key, values) {
       var messages = archifyI18nData.messages || {};
       var template = Object.prototype.hasOwnProperty.call(messages, key) ? messages[key] : key;
@@ -3740,10 +3759,10 @@
       var finePointerQuery = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : null;
 
       function nodes() {
-        return Array.prototype.slice.call(svg.querySelectorAll('[data-node-id]'));
+        return graphNodes(svg);
       }
       function edges() {
-        return Array.prototype.slice.call(svg.querySelectorAll('[data-edge-from][data-edge-to]'));
+        return graphEdges(svg);
       }
       function nodeLabel(node, fallback) {
         return node.getAttribute('data-node-label') || (node.getAttribute('aria-label') || fallback).replace(/^Focus\s+/, '');
@@ -3841,7 +3860,7 @@
         }
         if (options.updateUrl === true && activeIds.length === 1) {
           try {
-            history.replaceState(null, '', location.pathname + location.search + '#focus=' + encodeURIComponent(activeIds[0]));
+            history.replaceState(null, '', location.pathname + location.search + viewerHash('focus=' + encodeURIComponent(activeIds[0])));
           } catch (_) {}
         }
       }
@@ -3917,8 +3936,8 @@
         }
         if (options.updateUrl !== false) {
           try {
-            history.replaceState(null, '', location.pathname + location.search + '#focus=' +
-              encodeURIComponent(activeIds[0]) + '&reach=' + direction);
+            history.replaceState(null, '', location.pathname + location.search + viewerHash('focus=' +
+              encodeURIComponent(activeIds[0]) + '&reach=' + direction));
           } catch (_) {}
         }
         if (options.reveal !== false && Archify.view && typeof Archify.view.reveal === 'function') {
@@ -4455,7 +4474,7 @@
         });
         revealPinnedRelationship(record);
         if (options.updateUrl !== false && record.id) {
-          try { history.replaceState(null, '', location.pathname + location.search + '#relation=' + encodeURIComponent(record.id)); } catch (_) {}
+          try { history.replaceState(null, '', location.pathname + location.search + viewerHash('relation=' + encodeURIComponent(record.id))); } catch (_) {}
         }
         return true;
       }
@@ -4464,6 +4483,9 @@
         return record ? inspectRelationship(record.key, options) : false;
       }
       function installRelationshipHitTargets() {
+        if (relationshipHitOverlay) relationshipHitOverlay.remove();
+        relationshipHitOverlay = null;
+        relationshipHitTargets = [];
         if (html.getAttribute('data-embed') === 'true') return 0;
         var records = relationshipHitRecords();
         if (!records.length) return 0;
@@ -4791,7 +4813,7 @@
           Archify.view.reset({ automatic: true });
         }
         if (options.updateUrl !== false) {
-          try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+          try { history.replaceState(null, '', location.pathname + location.search + viewerHash('')); } catch (_) {}
         }
         if (restoreNode) {
           try { restoreNode.focus({ preventScroll: true }); }
@@ -4857,7 +4879,7 @@
         if (options.updateUrl !== false) {
           var key = options.urlKey || 'focus';
           var value = options.urlValue || normalized[0];
-          try { history.replaceState(null, '', location.pathname + location.search + '#' + key + '=' + encodeURIComponent(value)); } catch (_) {}
+          try { history.replaceState(null, '', location.pathname + location.search + viewerHash(key + '=' + encodeURIComponent(value))); } catch (_) {}
         }
         return true;
       }
@@ -4886,9 +4908,9 @@
         if (activeIds.length !== 1) return Promise.resolve(false);
         var record = pinnedRelationshipRecord();
         var relationId = record && record.id;
-        var value = location.href.replace(/#.*$/, '') + (relationId
-          ? '#relation=' + encodeURIComponent(relationId)
-          : '#focus=' + encodeURIComponent(activeIds[0]) + (reachabilityMode ? '&reach=' + reachabilityMode : ''));
+        var value = location.href.replace(/#.*$/, '') + viewerHash(relationId
+          ? 'relation=' + encodeURIComponent(relationId)
+          : 'focus=' + encodeURIComponent(activeIds[0]) + (reachabilityMode ? '&reach=' + reachabilityMode : ''));
         var copy = navigator.clipboard && typeof navigator.clipboard.writeText === 'function'
           ? navigator.clipboard.writeText(value).then(function () { return true; }).catch(function () { return fallbackCopy(value); })
           : Promise.resolve(fallbackCopy(value));
@@ -5029,8 +5051,9 @@
                 !inspectRelationshipById(relation, { updateUrl: false, toggle: false })) clear({ updateUrl: false });
           }
           else if (initial) {
-            if (set(initial, { updateUrl: false, toggle: false }) &&
-                (reach === 'upstream' || reach === 'downstream')) {
+            if (!set(initial, { updateUrl: false, toggle: false })) {
+              clear({ updateUrl: false });
+            } else if (reach === 'upstream' || reach === 'downstream') {
               applyReachability(reach, { updateUrl: false, toggle: false, reveal: false });
             }
           }
@@ -5046,6 +5069,8 @@
         setMany: setMany,
         clear: clear,
         copyLink: copyFocusLink,
+        refreshGraph: installRelationshipHitTargets,
+        restoreFromHash: syncFocusFromHash,
         reach: applyReachability,
         clearReach: clearReachability,
         reachabilitySnapshot: reachabilitySnapshot,
@@ -5086,10 +5111,10 @@
       var enterTimer = null;
 
       function nodes() {
-        return Array.prototype.slice.call(svg.querySelectorAll('[data-node-id]'));
+        return graphNodes(svg);
       }
       function edges() {
-        return Array.prototype.slice.call(svg.querySelectorAll('[data-edge-from][data-edge-to]'));
+        return graphEdges(svg);
       }
       function nodeLabel(node, fallback) {
         return node.getAttribute('data-node-label') ||
@@ -5619,7 +5644,9 @@
           baselineStageGap = stageGap;
           if (stageGap < SAFE_GAP) {
             railLatched = true;
-            if (writeReserve(Math.max(0, SAFE_GAP - stageGap))) return null;
+            var navBottom = parseFloat(window.getComputedStyle(nav).bottom) || 0;
+            var bottomPadding = parseFloat(window.getComputedStyle(container).paddingBottom) || 0;
+            if (writeReserve(Math.max(0, navRect.height + navBottom + SAFE_GAP - bottomPadding))) return null;
           }
         } else if (railLatched && reserve > 0 && stageGap < SAFE_GAP) {
           /* Keep the decision latched while Adaptive Reader incorporates the
@@ -5909,7 +5936,7 @@
         transaction.resolve({ id: transaction.id, state: transaction.state });
         return true;
       }
-      function cameraReceipt(target, options) {
+      function cameraReceipt(target) {
         var resolver;
         var transaction = {
           id: ++cameraGeneration,
@@ -6033,7 +6060,7 @@
         var wanted = {};
         (ids || []).forEach(function (id) { seeds[id] = true; wanted[id] = true; });
         if (includeNeighbors) {
-          Array.prototype.forEach.call(svg.querySelectorAll('[data-edge-from][data-edge-to]'), function (edge) {
+          graphEdges(svg).forEach(function (edge) {
             var from = edge.getAttribute('data-edge-from');
             var to = edge.getAttribute('data-edge-to');
             if (seeds[from] || seeds[to]) { wanted[from] = true; wanted[to] = true; }
@@ -6043,7 +6070,7 @@
       }
       function boxesFor(ids, includeNeighbors) {
         var wanted = semanticIds(ids, includeNeighbors);
-        return Array.prototype.slice.call(svg.querySelectorAll('[data-node-id]'))
+        return graphNodes(svg)
           .filter(function (node) { return wanted[node.getAttribute('data-node-id')]; })
           .map(function (node) {
             try { return node.getBBox(); } catch (_) { return null; }
@@ -6108,7 +6135,7 @@
         target.y = (top + bottom) / 2 - (bounds.y + bounds.height / 2) * target.scale;
         var start = sampleRenderedState();
         stopCameraMotion('replaced', false);
-        var transaction = cameraReceipt(target, options);
+        var transaction = cameraReceipt(target);
         cameraTransaction = transaction;
         var instant = options.instant === true || reducedMotion() || document.hidden;
         if (instant) {
@@ -6160,7 +6187,7 @@
         state.mode = 'semantic';
         apply();
         if (!container.hasAttribute('data-wide-diagram')) {
-          var contained = cameraReceipt({ scale: 1, x: 0, y: 0, mode: 'semantic' }, options);
+          var contained = cameraReceipt({ scale: 1, x: 0, y: 0, mode: 'semantic' });
           cameraTransaction = contained;
           finishCameraTransaction(contained, 'complete');
           return contained;
@@ -6171,7 +6198,7 @@
         var maxX = Math.max.apply(Math, boxes.map(function (box) { return box.x + box.width; }));
         var center = ((minX + maxX) / 2 / viewBox.width) * (svg.clientWidth || 1);
         var target = Math.max(0, Math.min(svg.clientWidth - container.clientWidth, center - container.clientWidth / 2));
-        var transaction = cameraReceipt({ scrollLeft: target }, options);
+        var transaction = cameraReceipt({ scrollLeft: target });
         cameraTransaction = transaction;
         var instant = options.instant === true || reducedMotion() || document.hidden;
         autoScrollUntil = Date.now() + (instant ? 50 : 470);
@@ -6334,7 +6361,7 @@
         mapSvg.setAttribute('viewBox', [viewBox.x, viewBox.y, viewBox.width, viewBox.height].join(' '));
         nodeLayer.textContent = '';
         nodes = [];
-        Array.prototype.forEach.call(diagram.querySelectorAll('[data-node-id]'), function (node) {
+        graphNodes(diagram).forEach(function (node) {
           var box;
           try { box = node.getBBox(); } catch (_) { box = null; }
           if (!box || box.width <= 0 || box.height <= 0) return;
@@ -6715,7 +6742,7 @@
       }
       function focusNode(id) {
         var main = diagram.querySelector('[data-node-id="' + id + '"]');
-        if (!main) return false;
+        if (!main || main.hasAttribute('data-cleanup-absent')) return false;
         if (Archify.focus && typeof Archify.focus.set === 'function') {
           Archify.focus.set(id, { toggle: false });
         }
@@ -6891,6 +6918,7 @@
         close: close,
         toggle: toggle,
         sync: sync,
+        refreshGraph: function () { build(); sync(); },
         focus: focusNode,
         isOpen: function () { return requestedOpen; },
         count: function () { return nodes.length; }
@@ -6936,7 +6964,7 @@
       function connectionsFor(id) {
         var count = 0;
         var seen = {};
-        Array.prototype.forEach.call(svg.querySelectorAll('[data-edge-from][data-edge-to]'), function (edge) {
+        graphEdges(svg).forEach(function (edge) {
           var from = edge.getAttribute('data-edge-from');
           var to = edge.getAttribute('data-edge-to');
           var key = from + '\u0000' + to;
@@ -6948,26 +6976,28 @@
         return count;
       }
 
-      var items = Array.prototype.map.call(svg.querySelectorAll('[data-node-id]'), function (node) {
-        var id = node.getAttribute('data-node-id');
-        var label = node.getAttribute('data-node-label') || (node.getAttribute('aria-label') || id).replace(/^Focus\s+/, '');
-        var text = (node.textContent || '').replace(/\s+/g, ' ').trim();
-        var sublabel = node.getAttribute('data-node-sublabel') || '';
-        var context = node.getAttribute('data-node-context') || '';
-        var tag = node.getAttribute('data-node-tag') || '';
-        var type = semanticType(node);
-        return {
-          id: id,
-          label: label,
-          type: type,
-          sublabel: sublabel,
-          context: context,
-          tag: tag,
-          links: connectionsFor(id),
-          search: (id + ' ' + label + ' ' + type + ' ' + sublabel + ' ' + context + ' ' + tag + ' ' + text).toLowerCase(),
-          node: node
-        };
-      });
+      function items() {
+        return graphNodes(svg).map(function (node) {
+          var id = node.getAttribute('data-node-id');
+          var label = node.getAttribute('data-node-label') || (node.getAttribute('aria-label') || id).replace(/^Focus\s+/, '');
+          var text = (node.textContent || '').replace(/\s+/g, ' ').trim();
+          var sublabel = node.getAttribute('data-node-sublabel') || '';
+          var context = node.getAttribute('data-node-context') || '';
+          var tag = node.getAttribute('data-node-tag') || '';
+          var type = semanticType(node);
+          return {
+            id: id,
+            label: label,
+            type: type,
+            sublabel: sublabel,
+            context: context,
+            tag: tag,
+            links: connectionsFor(id),
+            search: (id + ' ' + label + ' ' + type + ' ' + sublabel + ' ' + context + ' ' + tag + ' ' + text).toLowerCase(),
+            node: node
+          };
+        });
+      }
 
       function resultButtons() {
         return Array.prototype.slice.call(results.querySelectorAll('.node-finder-result'));
@@ -6985,8 +7015,8 @@
       }
 
       function availableItems() {
-        if (!context.allowedIds) return items.slice();
-        return items.filter(function (item) { return context.allowedIds.indexOf(item.id) !== -1; });
+        if (!context.allowedIds) return items();
+        return items().filter(function (item) { return context.allowedIds.indexOf(item.id) !== -1; });
       }
 
       function applyContext() {
@@ -6998,7 +7028,7 @@
       }
 
       function select(id) {
-        var item = items.find(function (candidate) { return candidate.id === id; });
+        var item = availableItems().find(function (candidate) { return candidate.id === id; });
         if (!item) return false;
         var routeSelection = context.kind === 'route-source' || context.kind === 'route-target';
         if (routeSelection) {
@@ -7142,7 +7172,8 @@
         select: select,
         isOpen: function () { return !panel.hidden; },
         context: function () { return context.kind; },
-        count: items.length
+        refreshGraph: function () { if (!panel.hidden) render(input.value); },
+        get count() { return availableItems().length; }
       };
     })();
 
@@ -7188,10 +7219,10 @@
       var JOURNEY_DWELL_MS = 1100;
 
       function nodes() {
-        return Array.prototype.slice.call(svg.querySelectorAll('[data-node-id]'));
+        return graphNodes(svg);
       }
       function edges() {
-        return Array.prototype.slice.call(svg.querySelectorAll('[data-edge-from][data-edge-to]'));
+        return graphEdges(svg);
       }
       function nodesById() {
         var out = Object.create(null);
@@ -7333,7 +7364,7 @@
       }
       function replaceRouteHash(value) {
         try {
-          history.replaceState(null, '', location.pathname + location.search + (value ? '#route=' + value : ''));
+          history.replaceState(null, '', location.pathname + location.search + viewerHash(value ? 'route=' + value : ''));
         } catch (_) {}
       }
       function renderPlaceholder(copy) {
@@ -7421,21 +7452,6 @@
           outgoing[from].push({ edge: edge, to: to });
         });
         return outgoing;
-      }
-      function reachableFrom(source) {
-        var outgoing = outgoingByNode();
-        var reached = {};
-        var queue = [source];
-        reached[source] = true;
-        for (var cursor = 0; cursor < queue.length; cursor += 1) {
-          var links = outgoing[queue[cursor]] || [];
-          links.forEach(function (link) {
-            if (reached[link.to]) return;
-            reached[link.to] = true;
-            queue.push(link.to);
-          });
-        }
-        return reached;
       }
       function hopDistancesFrom(source) {
         var outgoing = outgoingByNode();
@@ -7840,7 +7856,7 @@
         startId = id;
         endId = null;
         mode = 'target';
-        var reached = reachableFrom(id);
+        var reached = hopDistancesFrom(id);
         byId[id].setAttribute('data-route-start', '');
         byId[id].setAttribute('data-route-match', '');
         Object.keys(reached).forEach(function (candidateId) {
@@ -7935,7 +7951,6 @@
         var focused = options.source || (Archify.focus && typeof Archify.focus.active === 'function' ? Archify.focus.active() : null);
         if (Array.isArray(focused)) focused = null;
         clear({ updateUrl: false, preserveView: true, restoreFocus: false });
-        if (Archify.intentTrace && typeof Archify.intentTrace.clear === 'function') Archify.intentTrace.clear({ announce: false });
         if (Archify.focus && typeof Archify.focus.clear === 'function') {
           Archify.focus.clear({ updateUrl: false, preserveView: true });
         }
@@ -8038,7 +8053,7 @@
       }
       function copyLink() {
         if (mode !== 'result') return Promise.resolve(false);
-        var value = location.href.replace(/#.*$/, '') + '#route=' + encodeURIComponent(startId) + '~' + encodeURIComponent(endId);
+        var value = location.href.replace(/#.*$/, '') + viewerHash('route=' + encodeURIComponent(startId) + '~' + encodeURIComponent(endId));
         var copy = navigator.clipboard && typeof navigator.clipboard.writeText === 'function'
           ? navigator.clipboard.writeText(value).then(function () { return true; }).catch(function () { return fallbackCopy(value); })
           : Promise.resolve(fallbackCopy(value));
@@ -8071,9 +8086,11 @@
             return;
           }
           var parts = route.split('~');
-          if (parts.length !== 2) return;
           var byId = nodesById();
-          if (!byId[parts[0]] || !byId[parts[1]]) return;
+          if (parts.length !== 2 || !byId[parts[0]] || !byId[parts[1]]) {
+            clear({ updateUrl: false, restoreFocus: false });
+            return;
+          }
           begin({ source: parts[0], focusNode: false });
           choose(parts[1], { updateUrl: false });
         } catch (_) {}
@@ -8157,6 +8174,7 @@
         showOverview: showJourneyOverview,
         selectJourneyIndex: selectJourneyIndex,
         syncMotion: syncJourneyMotion,
+        restoreFromHash: syncFromHash,
         isJourneyPlaying: function () { return journeyPlaying; },
         finderContext: finderContext,
         finderOpening: finderOpening,

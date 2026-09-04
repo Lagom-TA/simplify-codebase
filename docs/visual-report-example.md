@@ -2,7 +2,9 @@
 
 This is a format example, not a finding about a real repository. Replace every
 placeholder with verified facts and absolute artifact paths from the current
-run. The written proof record remains authoritative.
+run. The written proof record remains authoritative. These examples assume the
+user requested or confirmed visual delivery; otherwise deliver the complete
+text report without generating the map.
 
 ## Survey
 

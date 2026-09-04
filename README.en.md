@@ -103,7 +103,7 @@ Use $simplify-codebase to verify and integrate the simplification findings from 
 ### Add a visual companion
 
 ```text
-Use $simplify-codebase to audit this repository. Keep the written proof records authoritative. When several confirmed components and consumers make a finding hard to locate, also deliver a Cleanup Map with deep links for each visualized Finding ID. Do not call authored graph reachability runtime impact.
+Use $simplify-codebase to audit this repository and generate a Cleanup Map with deep links for each visualized Finding ID. Keep the written proof records authoritative. Draw only confirmed components and relationships; do not call authored graph reachability runtime impact.
 ```
 
 ## What it returns
@@ -112,7 +112,9 @@ A read-only survey returns coverage, ranked proof records, important counterexam
 
 A change task also returns the implemented cut, validation results by layer, remaining risk, an operation receipt, and an executable undo path. A narrow green check is never presented as complete runtime or user acceptance.
 
-When a finding crosses several components, states, or consumers, the Skill can use its bundled renderer to deliver a validated desktop interactive HTML artifact. Survey follows Locate, Trace, Cut, and Decide; Change follows Before, Cut, After, and Verify. The map remains a visual companion to the proof record, never a substitute for consumer evidence, the Change operation receipt, or the undo path. When topology remains unresolved or a map adds no explanatory value, the result falls back to the complete text report with exact source locations.
+The default delivery is a complete text report. An explicit request for visualization authorizes the Skill to generate a validated desktop interactive HTML artifact with its bundled renderer. Otherwise, even when a finding crosses several components, states, or consumers, the Skill first explains what a map would clarify and waits for confirmation before generating it. Without confirmation, it completes the text audit without a map.
+
+Survey follows Locate, Trace, Cut, and Decide; Change follows Before, Cut, After, and Verify. The map remains a visual companion to the proof record, never a substitute for consumer evidence, the Change operation receipt, or the undo path. When topology remains unresolved or a map adds no explanatory value, the complete text report with exact source locations remains the delivery.
 
 ## Repository layout
 

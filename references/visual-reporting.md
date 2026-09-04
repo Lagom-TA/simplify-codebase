@@ -26,10 +26,15 @@ text report.
 
 ## Decide whether a cleanup map helps
 
-Create one when the user asks or when a Finding spans several confirmed owners,
-consumers, states, stores, or boundaries. Good cases include a relay layer,
-split truth, parallel lifecycle, duplicate representation, request/event path,
-or a Change that removes or reroutes ownership.
+Create a map only after an explicit user request or confirmation. An explicit
+request needs no further confirmation. Otherwise, when a Finding spans several
+confirmed owners, consumers, states, stores, or boundaries, explain what a map
+would clarify and offer it. Do not generate the JSON or HTML before confirmation;
+complete the text audit regardless of whether the user accepts or responds.
+
+Good cases to offer include a relay layer, split truth, parallel lifecycle,
+duplicate representation, request/event path, or a Change that removes or
+reroutes ownership. Explanatory value alone does not authorize generation.
 
 Skip it when one source range already locates the issue, topology remains
 unresolved, the candidate has no meaningful relationship context, or the map
@@ -106,9 +111,10 @@ Change uses a different four-stage receipt:
 
 Node selection opens a semantic passport containing the verified locus,
 confirmed incoming/outgoing relationships, and related Findings. The route
-probe may compare any two nodes, but it traverses only authored confirmed
-relationships. A selected node must remain visibly selected even when the
-cleanup stage de-emphasizes surrounding context. Preserve Archify's native
+probe may compare any two nodes in the active snapshot, traversing only its
+authored confirmed relationships. Passport relationships, reachability, search,
+and radar use that same snapshot. A selected node must remain visibly selected
+even when the cleanup stage de-emphasizes surrounding context. Preserve Archify's native
 `focus`, `relation`, `route`, and reachability hashes; the cleanup hash handler
 owns only `finding`, `stage`, and legacy Finding views.
 
@@ -133,8 +139,8 @@ controls, a one-sentence stage guide, and the graph. The summary explains what
 the user is looking at; the stage guide explains how to read the current visual
 state. Neither should restate graph topology or detailed proof.
 
-Let Locate reveal the source passport, Trace reveal the route probe, and Cut
-communicate mainly through visual state. Preserve non-focused semantics as
+Let explicit node selection reveal the source passport, Trace reveal the route
+probe, and Cut communicate mainly through visual state. Preserve non-focused semantics as
 readable gray context rather than making them disappear. Reveal proof,
 consequence, and unresolved facts automatically at Decide or Verify, with one
 visible Evidence control for earlier access. On desktop, show that detailed
@@ -163,7 +169,7 @@ review.
 ## Render and validate
 
 Resolve the installed Skill directory rather than assuming a sibling checkout.
-The bundled renderer needs Node.js 18 or newer and has no npm package
+The bundled renderer needs Node.js 18 or newer and has no npm runtime
 dependency. It does not need a separate Archify installation because the
 Architecture rendering and viewer core live under `visualization/archify-core/`.
 
@@ -184,7 +190,9 @@ inspect it at the desktop acceptance sizes 1280×800 and 1440×900. Check:
 - repeated node clicks, stage changes, manual zoom, reset, and evidence-rail
   changes produce a consistent camera result and truthful mode/percentage;
 - the primary node, confirmed route, and cut set match the proof record;
-- Before and After hide the correct retired or newly authored semantics;
+- Before and After hide the correct retired or newly authored semantics, and
+  passport, route, reachability, search, and radar queries use that same snapshot;
+- keyboard activation preserves focus on the selected Finding or stage control;
 - Finding titles and summaries wrap without hard truncation, and long labels do
   not hide IDs, edge direction, source loci, proof, or unknowns;
 - contextual nodes and relationships remain legible as secondary gray content;

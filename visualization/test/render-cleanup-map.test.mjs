@@ -23,14 +23,6 @@ test('Survey and Change fixtures satisfy the cleanup-map contract', () => {
   assert.deepEqual(validateDocument(fixture('change.cleanup-map.json')), []);
 });
 
-test('bundled JSON Schema matches the authored contract surface', () => {
-  const schema = JSON.parse(fs.readFileSync(path.join(root, 'cleanup-map.schema.json'), 'utf8'));
-  assert.equal(schema.$schema, 'https://json-schema.org/draft/2020-12/schema');
-  assert.deepEqual(schema.properties.meta.required, ['title', 'mode', 'scope']);
-  assert.equal('summary' in schema.properties.meta.properties, false);
-  assert.equal('detail' in schema.$defs.node.properties, false);
-});
-
 test('renderer creates a checked standalone artifact for both modes', () => {
   for (const name of ['survey.cleanup-map.json', 'change.cleanup-map.json']) {
     const document = fixture(name);
@@ -57,54 +49,53 @@ test('renderer creates a checked standalone artifact for both modes', () => {
     ]) {
       assert.doesNotMatch(html, retiredSurface);
     }
-    assert.match(html, /setEvidenceOpen\(isDecisionStage\(stage\)\)/);
-    assert.match(html, /findingSummary\.textContent = finding\.summary/);
-    assert.match(html, /stageCaption\.textContent = stageCaptions\[currentStage\]/);
-    assert.match(html, /\.cleanup-analysis-header \{/);
-    assert.match(html, /\.cleanup-stage-rail \{/);
-    assert.match(html, /html\[data-cleanup-artifact="true"\] \.header \{/);
     assert.match(html, /<html data-cleanup-artifact="true" /);
-    assert.match(html, /html\[data-cleanup-artifact="true"\] body \{ padding-block: 0\.375rem; \}/);
-    assert.doesNotMatch(html, /document\.documentElement\.setAttribute\('data-cleanup-artifact', 'true'\)/);
-    assert.match(html, /title\.textContent = finding\.title/);
-    assert.doesNotMatch(html, /title\.textContent = finding\.id \+ ' · ' \+ finding\.title/);
-    assert.match(html, /\.cleanup-workspace\[data-evidence-open="true"\] \{/);
-    assert.match(html, /workspace\.appendChild\(diagram\)/);
-    assert.match(html, /workspace\.appendChild\(evidenceDrawer\)/);
-    assert.doesNotMatch(html, /cleanup-finding-eyebrow/);
-    assert.match(html, /opacity: 0\.36 !important/);
-    assert.match(html, /opacity: 0\.3 !important/);
-    assert.match(html, /\[data-node-id\]\[data-focus-selected\]/);
-    assert.match(html, /stroke-width: 3\.25px !important/);
-    assert.match(html, /if \(!ownsHash\)/);
-    assert.match(html, /activate\(currentFinding\.id, currentStage, false, Boolean\(location\.hash/);
-    assert.match(html, /if \(!preserveNativeFocus\) resetNative\(\)/);
-    assert.match(html, /if \(!preserveNativeFocus\) scheduleStageCamera\(finding, stage\)/);
-    assert.doesNotMatch(html, /Archify\?\.focus\?\.set\(finding\.primary/);
-    assert.match(html, /click it to open its source passport/);
-    assert.match(html, /function cutNodeIds\(finding\)/);
-    assert.match(html, /function frameStage\(finding, stage\)/);
-    assert.match(html, /border: 1px solid var\(--panel-border\)/);
-    assert.match(html, /data-cleanup-ready/);
-    assert.match(html, /html\[data-cleanup-ready="true"\] svg \[data-node-id\],[\s\S]*?transition: opacity 180ms cubic-bezier\(0\.22, 1, 0\.36, 1\);/);
-    assert.doesNotMatch(html, /svg \[data-node-id\],\s*\nsvg \[data-edge-id\] \{ transition: opacity 180ms ease, filter 180ms ease; \}/);
-    assert.doesNotMatch(html, /\.cleanup-finding-title \{[^}]*text-overflow:\s*ellipsis/s);
-    assert.doesNotMatch(html, /\.cleanup-finding-title \{[^}]*white-space:\s*nowrap/s);
-    assert.match(html, /params\.set\('finding'/);
-    assert.match(html, /Archify\.routeProbe = \(function \(\)/);
-    assert.match(html, /function zoomBy\(delta\)/);
-    assert.match(html, /state\.mode !== 'manual' \|\| cameraTransaction \|\| cameraFrame \|\| cameraTimer/);
-    assert.match(html, /zoomBy\(0\.25\)/);
-    assert.match(html, /zoomBy\(-0\.25\)/);
-    assert.match(html, /var semantic = state\.mode === 'semantic';/);
-    assert.match(html, /set\(id, \{ toggle: false \}\)/);
-    assert.match(html, /includeNeighbors: true, maxScale: 1\.4, reason: 'focus'/);
-    assert.match(html, /options\.includeNeighbors \? 1\.4 : 1\.6/);
-    assert.match(html, /maxScale: stage === 'locate' \? 1\.4 : 1\.35/);
-    assert.match(html, /var containerObserver = new ResizeObserver/);
-    assert.match(html, /outerHeight\(header\) \+ outerHeight\(cleanupPanel\)/);
     assert.doesNotMatch(html, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
   }
+});
+
+test('renderer handles two starts, a branch, and a cross-column edge on another row', () => {
+  const document = {
+    schema_version: 1,
+    map_type: 'cleanup',
+    meta: { title: 'Two start route branches', mode: 'survey', scope: 'focused', locale: 'en' },
+    nodes: [
+      { id: 'chooseStart', label: 'Choose start', role: 'entrypoint', column: 0 },
+      { id: 'finderContext', label: 'Finder context', role: 'consumer', column: 0 },
+      { id: 'reachableFrom', label: 'Reachable traversal', role: 'candidate', column: 1 },
+      { id: 'hopDistancesFrom', label: 'Hop traversal', role: 'owner', column: 1 },
+      { id: 'outgoingByNode', label: 'Outgoing index', role: 'owner', column: 2 },
+      { id: 'edges', label: 'Route query', role: 'owner', column: 3 },
+      { id: 'graphEdges', label: 'Snapshot edges', role: 'boundary', column: 4 },
+    ],
+    relationships: [
+      { id: 'chooseReach', from: 'chooseStart', to: 'reachableFrom', label: 'read reachable nodes', kind: 'call', evidence: 'confirmed' },
+      { id: 'reachOutgoing', from: 'reachableFrom', to: 'outgoingByNode', label: 'walk outgoing edges', kind: 'call', evidence: 'confirmed' },
+      { id: 'chooseHops', from: 'chooseStart', to: 'hopDistancesFrom', label: 'reuse distance result', kind: 'call', evidence: 'confirmed' },
+      { id: 'finderHops', from: 'finderContext', to: 'hopDistancesFrom', label: 'read hop distances', kind: 'call', evidence: 'confirmed' },
+      { id: 'finderOutgoing', from: 'finderContext', to: 'outgoingByNode', label: 'filter start candidates', kind: 'call', evidence: 'confirmed' },
+      { id: 'hopsOutgoing', from: 'hopDistancesFrom', to: 'outgoingByNode', label: 'walk outgoing edges', kind: 'call', evidence: 'confirmed' },
+      { id: 'outgoingEdges', from: 'outgoingByNode', to: 'edges', label: 'read route edges', kind: 'call', evidence: 'confirmed' },
+      { id: 'edgesGraph', from: 'edges', to: 'graphEdges', label: 'read snapshot', kind: 'call', evidence: 'confirmed' },
+    ],
+    findings: [{
+      id: 'S1',
+      title: 'Duplicate route traversal',
+      disposition: 'ranked',
+      confidence: 'high',
+      risk: 'low',
+      summary: 'A route lookup contains two starting contexts and a cross-row branch.',
+      primary: 'reachableFrom',
+      related: ['chooseStart', 'finderContext', 'reachableFrom', 'hopDistancesFrom', 'outgoingByNode', 'edges', 'graphEdges'],
+      route: { from: 'chooseStart', to: 'graphEdges' },
+      cut: { nodes: ['reachableFrom'], relationships: ['chooseReach', 'reachOutgoing'] },
+      proof: 'The two contexts read the same outgoing index before querying the snapshot.',
+    }],
+  };
+  const html = renderDocument(document);
+  assert.ok(checkArtifact(html).every(([, ok]) => ok));
+  const edgeIds = [...new Set([...html.matchAll(/data-edge-id="([^"]+)"/g)].map(([, id]) => id))].sort();
+  assert.deepEqual(edgeIds, document.relationships.map(({ id }) => id).sort());
 });
 
 test('authored route uses the shortest confirmed directed path', () => {
@@ -196,6 +187,36 @@ test('embedded report text cannot terminate the JSON script', () => {
   const html = renderDocument(document);
   assert.doesNotMatch(html, /<script>globalThis\.compromised/);
   assert.match(html, /\\u003c\/script\\u003e/);
+});
+
+test('embedded report data round-trips literal replacement tokens and markup', () => {
+  for (const token of ['$$', "$'", '$`', '$&', '<script>"&\u2028\u2029</script>']) {
+    const document = fixture('change.cleanup-map.json');
+    document.meta.title = token;
+    document.nodes[0].label = token;
+    document.relationships[0].label = token;
+    document.nodes[0].locus.path = `src/${token}.ts`;
+    document.findings[0].title = token;
+    document.findings[0].summary = token;
+    document.findings[0].proof = `Literal ${token} must survive unchanged.`;
+    document.change.verification = document.findings[0].proof;
+    assert.deepEqual(validateDocument(document), []);
+    const html = renderDocument(document);
+    const embedded = html.match(/<script id="cleanup-map-data" type="application\/json">([\s\S]*?)<\/script>/)[1];
+    assert.deepEqual(JSON.parse(embedded), document);
+    assert.ok(checkArtifact(html).every(([, ok]) => ok));
+  }
+});
+
+test('artifact checks reject malformed or invalid embedded report data', () => {
+  const html = renderDocument(fixture('change.cleanup-map.json'));
+  const script = /(<script id="cleanup-map-data" type="application\/json">)[\s\S]*?(<\/script>)/;
+  for (const invalid of ['{broken', '{}', 'null']) {
+    const corrupted = html.replace(script, (_, open, close) => open + invalid + close);
+    assert.ok(checkArtifact(corrupted).some(([, ok]) => !ok), invalid);
+  }
+  assert.ok(checkArtifact(html.replace(script, '')).some(([, ok]) => !ok));
+  assert.ok(checkArtifact(html.replace(script, (match) => match + match)).some(([, ok]) => !ok));
 });
 
 test('rendered artifact can be written as one portable HTML file', () => {

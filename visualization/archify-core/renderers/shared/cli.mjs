@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { applyTemplate, esc } from './utils.mjs';
 import { validateSchema } from './validator.mjs';
-import { installRendererDiagnosticBoundary, throwDiagnosticProblems } from './diagnostics.mjs';
+import { installRendererDiagnosticBoundary } from './diagnostics.mjs';
 import { resolveLocale, translateMessage } from './i18n.mjs';
 
 installRendererDiagnosticBoundary();
@@ -15,7 +15,6 @@ export function loadDiagram({ rendererDir, diagramType, defaultExample, argv = p
   const inputPath = path.resolve(argv[2] || path.join(skillRoot, 'examples', defaultExample));
   const diagram = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
   validateSchema(diagramType, diagram);
-  validateRelationshipIds(diagram);
   const template = fs.readFileSync(path.join(skillRoot, 'assets/template.html'), 'utf8');
   const outPath = path.resolve(argv[3] || `${diagramType}.html`);
   return { diagram, template, outPath };
@@ -32,28 +31,6 @@ export function writeDiagram({ outPath, template, diagramType, meta, svg }) {
     visualPreset: meta.visual_preset || 'signal-flow',
   }));
   console.log(outPath);
-}
-
-function validateRelationshipIds(diagram) {
-  const collection = 'connections';
-  const relationships = Array.isArray(diagram[collection]) ? diagram[collection] : [];
-  const seen = new Set();
-  const problems = [];
-
-  relationships.forEach((relationship, index) => {
-    if (relationship.id === undefined || relationship.id === null || relationship.id === '') return;
-    if (seen.has(relationship.id)) {
-      problems.push(`/${collection}/${index}/id duplicates relationship id ${JSON.stringify(relationship.id)}`);
-    }
-    seen.add(relationship.id);
-  });
-
-  if (problems.length) {
-    throwDiagnosticProblems('Relationship identity validation failed', problems, {
-      code: 'relationship/duplicate-id',
-      subject: { diagramType: 'architecture', collection },
-    });
-  }
 }
 
 // Accessible name for the generated diagram SVG.

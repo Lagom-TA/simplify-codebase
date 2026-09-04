@@ -21,6 +21,7 @@
         }
       },
       "else": {
+        "not": { "required": ["change"] },
         "properties": {
           "findings": {
             "type": "array",
@@ -125,7 +126,16 @@
     "cut": {
       "type": "object",
       "additionalProperties": false,
-      "minProperties": 1,
+      "anyOf": [
+        {
+          "required": ["nodes"],
+          "properties": { "nodes": { "type": "array", "minItems": 1 } }
+        },
+        {
+          "required": ["relationships"],
+          "properties": { "relationships": { "type": "array", "minItems": 1 } }
+        }
+      ],
       "properties": {
         "nodes": { "$ref": "#/$defs/idList" },
         "relationships": { "$ref": "#/$defs/idList" }

@@ -3,8 +3,9 @@
 This directory contains the desktop-only visualization system for
 `simplify-codebase`. It vendors Archify's Architecture renderer and standalone
 viewer core, then compiles the cleanup-specific contract into that renderer.
-Archify does not need to be installed separately, and there is no npm package
-dependency.
+Archify does not need to be installed separately, and there is no npm runtime
+dependency. Visual delivery requires an explicit user request or confirmation;
+see [the delivery rules](../references/visual-reporting.md#decide-whether-a-cleanup-map-helps).
 
 ## Architecture
 
@@ -41,8 +42,9 @@ export runtime. Cleanup Map adds:
 The default surface contains the active Finding's concise analysis summary, its
 decision state, the four cleanup stages, a one-sentence reading guide, and the
 graph. The graph remains the primary visual surface. Progressive disclosure is
-stage-driven: Locate opens the source passport, Trace opens the native route
-probe, Cut carries the deletion boundary visually while preserving readable
+stage-driven: Locate frames the primary locus, explicit node selection opens
+the source passport, Trace opens the native route probe, Cut carries the
+deletion boundary visually while preserving readable
 gray context, and Decide or Verify reveals a detailed evidence rail beside the
 graph. The evidence rail never pushes the primary canvas below it. Generic
 surfaces that duplicate or mislabel this workflow are not compiled into the
@@ -74,6 +76,30 @@ node visualization/render-cleanup-map.mjs deliver input.cleanup-map.json output.
 The renderer performs referential and mode-specific checks that JSON Schema
 alone cannot express. The vendored Archify renderer then applies its own layout,
 label-overlap, edge-obstacle, and clean-flow gates.
+
+## Tests
+
+Renderer and runtime validation tests need only Node.js 18 or newer:
+
+```bash
+node --test visualization/test/render-cleanup-map.test.mjs
+```
+
+The full suite also validates the JSON Schema using Ajv and runs Chromium
+behavior tests using Playwright. It requires Node.js 20 or newer. Install the
+test dependencies once:
+
+```bash
+npm ci --prefix visualization
+node visualization/node_modules/playwright/cli.js install chromium
+npm --prefix visualization test
+```
+
+CI checks the standalone renderer on Node.js 18 and the full suite on Node.js 22.
+Schema tests check mode constraints and nonempty cuts against the runtime
+validator. Browser tests cover snapshot isolation, deep links, keyboard focus,
+and rendered report text. Ajv and Playwright are test-only dependencies; rendering
+and reading reports do not require them.
 
 ## Interaction contract
 
